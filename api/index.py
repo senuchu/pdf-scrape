@@ -1,12 +1,18 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
 import PyPDF2
 import re
+import os
+import shutil
 import json
 import io
 
 app = FastAPI()
+UPLOAD_DIR = "/tmp"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def extract_second_page_text(pdf_bytes):
+    """Extracts text from the second page of a PDF."""
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
         if len(reader.pages) < 2:
@@ -17,6 +23,7 @@ def extract_second_page_text(pdf_bytes):
         return None
 
 def classify_pdf(pdf_bytes):
+    """Classifies a PDF based on plagiarism and AI detection patterns."""
     text = extract_second_page_text(pdf_bytes)
     if not text:
         return {"error": "PDF does not have a second page or could not be read."}
@@ -57,15 +64,16 @@ def classify_pdf(pdf_bytes):
 
     return result
 
-@app.post("/upload/")
-async def upload_pdf(file: UploadFile = File(...)):
-    try:
-        pdf_bytes = await file.read()
-        if not pdf_bytes:
-            return {"error": "Uploaded file is empty."}
+@app.post("/classify")
+async def classify_pdf_endpoint(file: UploadFile = File(...)):
+    """Processes an uploaded PDF and classifies it based on AI detection and plagiarism patterns."""
+    input_path = os.path.join(UPLOAD_DIR, file.filename)
 
-        result = classify_pdf(pdf_bytes)
-        return json.dumps(result, indent=4)
-    
-    except Exception as e:
-        return {"error": f"Internal server error: {str(e)}"}
+    with open(input_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    with open(input_path, "rb") as buffer:
+        pdf_bytes = buffer.read()
+
+    result = classify_pdf(pdf_bytes)
+    return JSONResponse(content=result)
