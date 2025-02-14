@@ -1,3 +1,5 @@
-fastapi
-uvicorn
-pymupdf
+Flask==2.2.2
+fastapi==0.110.0
+uvicorn==0.29.0
+pymupdf==1.23.7
+python-multipart==0.0.9
