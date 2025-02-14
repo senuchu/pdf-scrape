@@ -10,7 +10,7 @@
   "routes": [
     {
       "src": "/upload",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     }
   ]
 }
