@@ -7,16 +7,20 @@ import io
 app = FastAPI()
 
 def extract_second_page_text(pdf_bytes):
-    reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
-    if len(reader.pages) < 2:
+    try:
+        reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        if len(reader.pages) < 2:
+            return None
+        return reader.pages[1].extract_text()
+    except Exception as e:
+        print(f"Error reading PDF: {e}")
         return None
-    return reader.pages[1].extract_text()
 
 def classify_pdf(pdf_bytes):
     text = extract_second_page_text(pdf_bytes)
     if not text:
-        return {"error": "PDF does not have a second page."}
-    
+        return {"error": "PDF does not have a second page or could not be read."}
+
     similarity_match = re.search(r"(\d+)%\s*Overall Similarity", text)
     ai_match = re.search(r"(?:(\d+)\*?%|(\*%))(?:\s*detected as AI)", text)
 
@@ -50,11 +54,18 @@ def classify_pdf(pdf_bytes):
             result["AI Detection"] = -1
             result["Below_Threshold"] = True
             result["AI Detection Asterisk"] = True
-    
+
     return result
 
 @app.post("/upload/")
 async def upload_pdf(file: UploadFile = File(...)):
-    pdf_bytes = await file.read()
-    result = classify_pdf(pdf_bytes)
-    return json.dumps(result, indent=4)
+    try:
+        pdf_bytes = await file.read()
+        if not pdf_bytes:
+            return {"error": "Uploaded file is empty."}
+
+        result = classify_pdf(pdf_bytes)
+        return json.dumps(result, indent=4)
+    
+    except Exception as e:
+        return {"error": f"Internal server error: {str(e)}"}
