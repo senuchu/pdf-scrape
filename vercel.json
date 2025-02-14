@@ -8,7 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/classify",
+      "src": "/upload",
       "dest": "/api/index.py"
     }
   ]
